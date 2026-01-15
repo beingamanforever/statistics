@@ -28,7 +28,8 @@
 ## Create a cross-tabulation (contingency table) @var{t} from data vectors.
 ##
 ## The inputs @var{x1}, @var{x2}, ... @var{xn} must be vectors of equal length
-## with a data type of numeric, logical, char, or string (cell array).
+## with a data type of numeric, logical, char, categorical, or cell array of
+## strings.
 ##
 ## As additional return values @code{crosstab} returns the chi-square statistics
 ## @var{chisq}, its p-value @var{p} and a cell array @var{labels}, containing
@@ -39,34 +40,49 @@
 
 function [t, chisq, p, labels] = crosstab (varargin)
 
-  ## check input
+  ## Check input
   if (nargin < 2)
     print_usage ();
   endif
 
-  ## main - begin
+  ## Main - begin
   v_length = [];                    # vector of lengths of input vectors
   reshape_format = [];              # vector of the dimensions of t
   X = [];                           # matrix of the indexed input values
   labels = {};                      # cell array of labels
   coordinates = {};                 # cell array of unique elements
 
+  ## Check if categorical support exists
+  has_categorical = (exist ('iscategorical', 'builtin') == 5) || ...
+                    (exist ('iscategorical', 'file') == 2);
+
   for i = 1:nargin
     vector = varargin{i};
-    ## If char array, convert to numerical vector
+
+    ## Handle different input types via grp2idx
     if (ischar (vector) || iscellstr (vector))
+      ## Char array or cellstr - use grp2idx directly
       try
         [vector, gnames] = grp2idx (vector);
       catch
         error ("crosstab: x1, x2 ... xn must be vectors.");
       end_try_catch
+    elseif (has_categorical && iscategorical (vector))
+      ## Categorical array - use grp2idx which handles categorical
+      if (! isvector (vector))
+        error ("crosstab: x1, x2 ... xn must be vectors.");
+      endif
+      [vector, gnames] = grp2idx (vector);
+      vector = vector(:);
     else
+      ## Numeric or logical
       if (! isvector (vector))
         error ("crosstab: x1, x2 ... xn must be vectors.");
       endif
       vector = vector(:);
       gnames = cellstr (num2str (vector));
     endif
+
     v_length(i) = length (vector);
     if (length (unique (v_length)) != 1)
       error ("crosstab: x1, x2 ... xn must be vectors of the same length.");
@@ -75,20 +91,20 @@ function [t, chisq, p, labels] = crosstab (varargin)
     for h = 1:length (gnames)
       labels{h, i} = gnames{h};
     endfor
-    reshape_format(i) = length (unique (vector(!isnan (vector))));
-    coordinates(i) = unique (vector(!isnan (vector)));
+    reshape_format(i) = length (unique (vector(! isnan (vector))));
+    coordinates(i) = unique (vector(! isnan (vector)));
   endfor
 
   t = zeros (reshape_format);
 
   ## Main logic:
-  ## For each combination of x1, x2, ... xn, search in unique elements stored 
-  ## in coordinates for each dimension and increment the position value in t 
+  ## For each combination of x1, x2, ... xn, search in unique elements stored
+  ## in coordinates for each dimension and increment the position value in t
   ## multidimensional matrix (always if there is no NaN element in the combination).
   for idx = 1:size (X, 1)
-    if (!any (isnan (X(idx,:))))
-      location = zeros (1,size (X, 2));
-      for jdx = 1:size (X,2)
+    if (! any (isnan (X(idx,:))))
+      location = zeros (1, size (X, 2));
+      for jdx = 1:size (X, 2)
         location(jdx) = find (cell2mat (coordinates(jdx)) == X(idx, jdx));
       endfor
       t(num2cell (location){:}) += 1;
@@ -100,6 +116,7 @@ function [t, chisq, p, labels] = crosstab (varargin)
       [p, chisq] = chi2test (t);
     endif
   endif
+
 endfunction
 
 ## Test input validation
@@ -109,16 +126,8 @@ endfunction
 %!error <crosstab: x1, x2 ... xn must be vectors.> crosstab ([1 1], ones (2))
 %!error <x1, x2 .* must be vectors of the same length> crosstab ([1], [1 2])
 %!error <x1, x2 .* must be vectors of the same length> crosstab ([1 2], [1])
-%!test
-%! load carbig
-%! [table, chisq, p, labels] = crosstab (cyl4, when, org);
-%! assert (table(2,3,1), 38);
-%! assert (labels{3,3}, "Japan");
-%!test
-%! load carbig
-%! [table, chisq, p, labels] = crosstab (cyl4, when, org);
-%! assert (table(2,3,2), 17);
-%! assert (labels{1,3}, "USA");
+
+## Test basic numeric input
 %!test
 %! x = [1, 1, 2, 3, 1];
 %! y = [1, 2, 5, 3, 1];
@@ -129,6 +138,15 @@ endfunction
 %! y = [1, 2, 3, 5, 1];
 %! t = crosstab (x, y);
 %! assert (t, [2, 1, 0, 0; 0, 0, 1, 0; 0, 0, 0, 1]);
+
+## Test with NaN values (should be excluded)
+%!test
+%! x = [1, 2, NaN, 1];
+%! y = [1, 2, 3, NaN];
+%! t = crosstab (x, y);
+%! assert (t, [1, 0, 0; 0, 1, 0]);
+
+## Test multidimensional crosstab
 %!test
 %! x1 = [1, 3, 7, 7, 8];
 %! x2 = [4, 2, 1, 1, 1];
@@ -140,8 +158,46 @@ endfunction
 %! T(:,:,2) = T2;
 %! t = crosstab (x1, x2, x3);
 %! assert (t, T);
+
+## Test with carbig dataset
 %!test
-%! x = [1, 2, NaN, 1];
-%! y = [1, 2, 3, NaN];
+%! load carbig
+%! [table, chisq, p, labels] = crosstab (cyl4, when, org);
+%! assert (table(2,3,1), 38);
+%! assert (labels{3,3}, "Japan");
+%!test
+%! load carbig
+%! [table, chisq, p, labels] = crosstab (cyl4, when, org);
+%! assert (table(2,3,2), 17);
+%! assert (labels{1,3}, "USA");
+
+## Test categorical input
+%!test
+%! if (! exist ('categorical', 'file'))
+%!   return;
+%! endif
+%! x = categorical ({'A', 'B', 'A', 'C', 'B'});
+%! y = [1, 2, 1, 3, 2];
 %! t = crosstab (x, y);
-%! assert (t, [1, 0, 0; 0, 1, 0]);
+%! assert (size (t), [3, 3]);
+%! assert (t(1, 1), 2);  # A with 1
+%! assert (t(2, 2), 2);  # B with 2
+
+%!test
+%! if (! exist ('categorical', 'file'))
+%!   return;
+%! endif
+%! x = categorical ({'low', 'med', 'high', 'low', 'med'});
+%! y = categorical ({'X', 'Y', 'X', 'Y', 'X'});
+%! [t, ~, ~, labels] = crosstab (x, y);
+%! assert (size (t), [3, 2]);
+
+%!test
+%! if (! exist ('categorical', 'file'))
+%!   return;
+%! endif
+%! ## Test categorical with numeric
+%! x = categorical ([10, 20, 10, 30, 20]);
+%! y = [1, 2, 1, 3, 2];
+%! t = crosstab (x, y);
+%! assert (t, [2, 0, 0; 0, 2, 0; 0, 0, 1]);

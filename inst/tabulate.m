@@ -51,9 +51,14 @@
 
 function tbl = tabulate (x)
 
+  ## Check if categorical type is available
+  has_categorical = (exist ('iscategorical', 'builtin') == 5) ...
+                 || (exist ('iscategorical', 'file') == 2);
+
   ## Check input for being numeric, string, categorical, cell array or logical
   if (! (isnumeric (x) && (isvector (x) || isempty (x))) && ! (iscellstr (x)
-                       && isvector (x)) && ! ischar (x) && ! iscategorical (x)
+                       && isvector (x)) && ! ischar (x) ...
+                       && ! (has_categorical && iscategorical (x))
                        && ! isa (x, "string") && ! islogical (x))
     error (strcat ("tabulate: X must be either a numeric vector, a", ...
                    " vector cell array of strings, a character matrix,", ...
@@ -65,7 +70,7 @@ function tbl = tabulate (x)
       x = x(:);
   endif
 
-  if (iscategorical (x))
+  if (has_categorical && iscategorical (x))
     ## For categorical, we report ALL categories, even if count is 0
     vals = categories (x);
     nc = length (vals);
@@ -84,7 +89,12 @@ function tbl = tabulate (x)
     endif
 
     total = sum (counts);
-    percents = 100 * counts ./ total;
+    if (total == 0)
+      percents = zeros (size (counts));
+    else
+      percents = 100 * counts ./ total;
+    endif
+
 
     ## Output format: Cell array
     out = cell (length (vals), 3);
@@ -96,40 +106,21 @@ function tbl = tabulate (x)
     ## Handle string arrays
     x(ismissing (x)) = [];
 
-    ## Convert to cellstr and use grp2idx which is robust
-    [idx, vals] = grp2idx (cellstr (x));
-
-    if (isempty (idx))
-      counts = [];
-      percents = [];
+    if (isempty (x))
+      out = cell (0, 3);
     else
+      ## Convert to cellstr and use grp2idx which is robust
+      [idx, vals] = grp2idx (cellstr (x));
+
       counts = accumarray (idx, 1);
       total = sum (counts);
       percents = 100 * counts ./ total;
+
+      out = cell (length (vals), 3);
+      out(:,1) = vals;
+      out(:,2) = num2cell (counts);
+      out(:,3) = num2cell (percents);
     endif
-
-    ## Output format: Cell array
-    vals_cell = vals;
-    out = cell (length (vals_cell), 3);
-    out(:,1) = vals_cell;
-    out(:,2) = num2cell (counts);
-    out(:,3) = num2cell (percents);
-
-    if (isempty (idx))
-      counts = [];
-      percents = [];
-    else
-      counts = accumarray (idx, 1);
-      total = sum (counts);
-      percents = 100 * counts ./ total;
-    endif
-
-    ## Output format: Cell array
-    vals_cell = vals;
-    out = cell (length (vals_cell), 3);
-    out(:,1) = vals_cell;
-    out(:,2) = num2cell (counts);
-    out(:,3) = num2cell (percents);
 
   elseif (islogical (x))
     ## Handle logical arrays
@@ -407,3 +398,44 @@ endfunction
 %!error<tabulate: X must be either a numeric vector> tabulate ({1, 2, 3, 4})
 %!error<tabulate: X must be either a numeric vector> ...
 %! tabulate ({"a", "b"; "a", "c"})
+
+%!test
+%! ## Categorical: all values undefined → zero counts and zero percents
+%! if (! exist ('categorical', 'file'))
+%!   return;
+%! endif
+%! x = categorical ({'a','b','c'});
+%! x(:) = categorical (missing);
+%! tbl = tabulate (x);
+%! assert (iscell (tbl));
+%! assert ([tbl{:,2}]', [0; 0; 0]);
+%! assert ([tbl{:,3}]', [0; 0; 0]);
+
+%!test
+%! ## Categorical with defined categories but no data
+%! if (! exist ('categorical', 'file'))
+%!   return;
+%! endif
+%! x = categorical ({}, {'low','med','high'});
+%! tbl = tabulate (x);
+%! assert (iscell (tbl));
+%! assert ([tbl{:,2}]', [0; 0; 0]);
+%! assert ([tbl{:,3}]', [0; 0; 0]);
+
+%!test
+%! ## String array: all values missing → empty table
+%! if (! exist ('string', 'file'))
+%!   return;
+%! endif
+%! x = string ({'a','b'});
+%! x(:) = missing;
+%! tbl = tabulate (x);
+%! assert (iscell (tbl));
+%! assert (isempty (tbl));
+
+%!test
+%! if (! exist ('categorical', 'file')), return; endif
+%! x = categorical ({'a'; 'b'; 'a'});
+%! tbl = tabulate (x);
+%! assert ([tbl{:,2}]', [2; 1]);
+

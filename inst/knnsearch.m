@@ -353,7 +353,9 @@ function [indices, distances] = __search_kdtree__ (node, query, k, X, dist, ...
   if (nargin < 8)
     r = Inf;
   endif
-  if (strcmpi (dist, "minkowski"))
+  is_euclidean = strcmpi (dist, "euclidean");
+  is_minkowski = strcmpi (dist, "minkowski");
+  if (is_minkowski)
     if (! (isscalar (distparam) && isnumeric (distparam) ...
                                 && distparam > 0 && isfinite (distparam)))
       error (strcat("knnsearch.__search_kdtree__:", ...
@@ -377,7 +379,11 @@ function [indices, distances] = __search_kdtree__ (node, query, k, X, dist, ...
 
     if (isfield (node, 'indices'))
       leaf_indices = node.indices;
-      if (strcmpi (dist, "minkowski"))
+      ## Inline Euclidean distance for the common case to avoid function call
+      if (is_euclidean)
+        diff = X(leaf_indices,:) - query;
+        dists = sqrt (sum (diff .^ 2, 2));
+      elseif (is_minkowski)
         dists = pdist2 (X(leaf_indices,:), query, dist, distparam);
       else
         dists = pdist2 (X(leaf_indices,:), query, dist);

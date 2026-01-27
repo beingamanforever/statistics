@@ -333,3 +333,120 @@ endfunction
 %! assert (isequaln (g, [NaN; 1; 2; NaN]));
 %! assert (isequal (gn, {'high'; 'low'}));
 %! assert (isequal (gl, string ({'high'; 'low'})));
+
+## Test empty inputs (each supported type)
+%!test
+%! [g, gn, gl] = grp2idx (double ([]));
+%! assert (isempty (g));
+%! assert (isequal (gn, cell (0,1)));
+%! assert (isempty (gl) && isa (gl, 'double'));
+
+%!test
+%! [g, gn, gl] = grp2idx (int32 ([]));
+%! assert (isempty (g));
+%! assert (isequal (gn, cell (0,1)));
+%! assert (isempty (gl) && isa (gl, 'int32'));
+
+%!test
+%! [g, gn, gl] = grp2idx (string ([]));
+%! assert (isempty (g));
+%! assert (isequal (gn, cell (0,1)));
+%! assert (isempty (gl));
+
+%!test
+%! [g, gn, gl] = grp2idx (cell (0,1));
+%! assert (isempty (g));
+%! assert (isequal (gn, cell (0,1)));
+%! assert (isequal (gl, cell (0,1)));
+
+%!test
+%! [g, gn, gl] = grp2idx (categorical ([]));
+%! assert (isempty (g));
+%! assert (isequal (gn, cell (0,1)));
+%! assert (isempty (gl) && iscategorical (gl));
+
+## Test 2-D / matrix inputs (must error)
+%!error <must be a vector> grp2idx (["a", "a"; "b", "c"])
+%!error <must be a vector> grp2idx ({'a', 'a'; 'b', 'c'})
+%!error <must be a vector> grp2idx ([1 2; 3 4])
+%!error <must be a vector> grp2idx (categorical ({'a', 'a'; 'b', 'c'}))
+
+## Test ordering rules: numeric/logical -> sorted order
+%!test
+%! s = [3; 1; 2];
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (gn, {'1'; '2'; '3'}));
+%! assert (isequal (gl, [1; 2; 3]));
+%! assert (isequal (g, [3; 1; 2]));
+
+%!test
+%! s = [true; false; true];
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (gn, {'0'; '1'}));
+%! assert (isequal (gl, [false; true]));
+
+## Test ordering rules: cellstr/string -> first appearance order
+%!test
+%! s = ["b"; "a"; "b"; "c"];
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (gn, {'b'; 'a'; 'c'}));
+%! assert (isequal (g, [1; 2; 1; 3]));
+
+%!test
+%! s = {'b'; 'a'; 'b'; 'c'};
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (gn, {'b'; 'a'; 'c'}));
+%! assert (isequal (g, [1; 2; 1; 3]));
+
+## Test ordering rules: categorical -> categories(s) order
+%!test
+%! s = categorical ({'b', 'a', 'b', 'c'}, {'c', 'b', 'a'});
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (gn, {'c'; 'b'; 'a'}));
+%! assert (isequal (g, [2; 3; 2; 1]));
+
+## Test row vs column vectors (output should be column)
+%!test
+%! s_row = ["a", "b"];
+%! s_col = ["a"; "b"];
+%! [g_row, gn_row, gl_row] = grp2idx (s_row);
+%! [g_col, gn_col, gl_col] = grp2idx (s_col);
+%! assert (isequal (g_row, g_col));
+%! assert (isequal (gn_row, gn_col));
+%! assert (size (g_row, 1) > 1);  # output is column vector
+
+## Test ordinal categorical (order should be respected)
+%!test
+%! s = categorical ({'med', 'low', 'high', 'med'}, {'low', 'med', 'high'}, 'Ordinal', true);
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (gn, {'low'; 'med'; 'high'}));
+%! assert (isequal (g, [2; 1; 3; 2]));
+
+## Test categorical with undefined values and defined categories
+%!test
+%! s = categorical ({'', ''}, {'A', 'B'});
+%! [g, gn, gl] = grp2idx (s);
+%! assert (all (isnan (g)));
+%! assert (isequal (gn, {'A'; 'B'}));
+
+## Test integer types
+%!test
+%! s = int16 ([5, 3, 5, 1]);
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (g, [3; 2; 3; 1]));
+%! assert (isequal (gn, {'1'; '3'; '5'}));
+%! assert (isa (gl, 'int16'));
+
+%!test
+%! s = uint8 ([10, 20, 10]);
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (g, [1; 2; 1]));
+%! assert (isa (gl, 'uint8'));
+
+## Test single precision
+%!test
+%! s = single ([1.5, 2.5, 1.5]);
+%! [g, gn, gl] = grp2idx (s);
+%! assert (isequal (g, [1; 2; 1]));
+%! assert (isa (gl, 'single'));
+

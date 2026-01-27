@@ -1331,6 +1331,10 @@ classdef ClassificationGAM
       [n_samples, n_features] = size (X);
       RSS = zeros (1, n_features);
 
+      ## Preallocate param struct array to avoid dynamic growth
+      param(1:n_features) = struct ("form", [], "breaks", [], "coefs", [], ...
+                                    "pieces", [], "order", [], "dim", []);
+
       ## Initialize model predictions with the intercept (log-odds)
       p = Inter;
       intercept = log (p / (1 - p));

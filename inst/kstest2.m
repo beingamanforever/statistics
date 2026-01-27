@@ -122,13 +122,13 @@ function [H, pValue, ks2stat] = kstest2 (x1, x2, varargin)
     error ("kstest2: Not enough data in X2");
   endif
   ## Calculate F1(x) and F2(x)
+  n1 = length (x1);
+  n2 = length (x2);
   binEdges    =  [-inf; sort([x1;x2]); inf];
   binCounts1  =  histc (x1 , binEdges, 1);
   binCounts2  =  histc (x2 , binEdges, 1);
-  sumCounts1  =  cumsum (binCounts1) ./ sum (binCounts1);
-  sumCounts2  =  cumsum (binCounts2) ./ sum (binCounts2);
-  sampleCDF1  =  sumCounts1(1:end - 1);
-  sampleCDF2  =  sumCounts2(1:end - 1);
+  sampleCDF1  =  cumsum (binCounts1)(1:end-1) / n1;
+  sampleCDF2  =  cumsum (binCounts2)(1:end-1) / n2;
   ## Calculate the suitable KS statistic according to tail
   switch tail
     case "unequal"    # 2-sided test: T = max|F1(x) - F2(x)|.
@@ -140,9 +140,7 @@ function [H, pValue, ks2stat] = kstest2 (x1, x2, varargin)
   endswitch
   ks2stat = max (deltaCDF);
   ## Compute the asymptotic P-value approximation
-  n_x1 = length(x1);
-  n_x2 = length(x2);
-  n =  n_x1 * n_x2 /(n_x1 + n_x2);
+  n =  n1 * n2 / (n1 + n2);
   lambda = max ((sqrt (n) + 0.12 + 0.11 / sqrt (n)) * ks2stat, 0);
   if strcmpi (tail, "unequal")    # 2-sided test
     v = [1:101];

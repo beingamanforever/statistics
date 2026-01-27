@@ -755,9 +755,7 @@ classdef ClassificationGAM
 
       ## Generate default predictors and response variable names (if necessary)
       if (isempty (PredictorNames))
-        for i = 1:columns (X)
-          PredictorNames {i} = strcat ("x", num2str (i));
-        endfor
+        PredictorNames = arrayfun (@(i) sprintf ("x%d", i), 1:ndims_X, "UniformOutput", false);
       endif
       if (isempty (ResponseName))
         ResponseName = "Y";
@@ -1335,6 +1333,9 @@ classdef ClassificationGAM
       p = Inter;
       intercept = log (p / (1 - p));
       f = intercept * ones (n_samples, 1);
+
+      ## Preallocate param struct array for spline models
+      param = repmat (struct (), 1, n_features);
 
       ## Start boosting iterations
       for iter = 1:num_iterations

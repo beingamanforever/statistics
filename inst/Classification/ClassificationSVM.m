@@ -818,8 +818,9 @@ classdef ClassificationSVM
 
       ## Generate default predictors and response variable names (if necessary)
       if (isempty (PredictorNames))
+        PredictorNames = cell (1, ndims_X);
         for i = 1:ndims_X
-          PredictorNames {i} = strcat ("x", num2str (i));
+          PredictorNames{i} = strcat ("x", num2str (i));
         endfor
       endif
       if (isempty (ResponseName))

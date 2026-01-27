@@ -368,6 +368,7 @@ function [indices, distances] = __search_kdtree__ (node, query, k, X, dist, ...
   endif
   indices = [];
   distances = [];
+  max_dist = Inf;  # Track current kth distance for pruning
   search (node, 0);
 
   function search (node, depth)
@@ -394,6 +395,9 @@ function [indices, distances] = __search_kdtree__ (node, query, k, X, dist, ...
           indices = indices(sort_idx);
           distances = distances(1:k);
           indices = indices(1:k);
+          max_dist = distances(k);
+        elseif (length (distances) == k)
+          max_dist = max (distances);
         endif
       endif
     else
@@ -411,12 +415,11 @@ function [indices, distances] = __search_kdtree__ (node, query, k, X, dist, ...
 
       plane_dist = abs (query(axis) - split_value);
       if (is_range)
-        max_dist = r;
-        if (plane_dist <= max_dist)
+        if (plane_dist <= r)
           search (further, depth + 1);
         endif
       else
-        if (length (distances) < k || plane_dist < distances(end))
+        if (length (distances) < k || plane_dist < max_dist)
           search (further, depth + 1);
         endif
       endif

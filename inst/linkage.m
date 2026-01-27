@@ -136,23 +136,38 @@ function dgram = linkage (d, method = "single", distarg, savememory)
     print_usage ();
   endif
 
-  d = squareform (d, "tomatrix");       # dissimilarity NxN matrix
-  n = rows (d);                         # the number of observations
-  diagidx = sub2ind ([n,n], 1:n, 1:n);  # indices of diagonal elements
-  d(diagidx) = Inf;                     # consider a cluster as far from itself
+  ## Compute n from length of condensed vector: len = n*(n-1)/2
+  len = length (d);
+  n = (1 + sqrt (1 + 8 * len)) / 2;
+  if (n != fix (n))
+    error ("linkage: invalid condensed distance vector length");
+  endif
+
+  ## Build symmetric distance matrix directly from condensed vector.
+  ## This is equivalent to squareform but we immediately set diagonal to Inf.
+  dmat = zeros (n);
+  k = 1;
+  for i = 1:n-1
+    dmat(i, i+1:n) = d(k:k+n-i-1);
+    k += n - i;
+  endfor
+  dmat = dmat + dmat';                  # make symmetric
+  d = [];                               # free condensed vector
+  dmat(1:n+1:n*n) = Inf;                # diagonal = Inf
+
   ## For equal-distance nodes, the order in which clusters are
   ## merged is arbitrary.  Rotating the initial matrix produces an
   ## ordering similar to Matlab's.
-  cname = n:-1:1;                       # cluster names in d
-  d = rot90 (d, 2);                     # exchange low and high cluster numbers
+  cname = n:-1:1;                       # cluster names in dmat
+  dmat = rot90 (dmat, 2);               # exchange low and high cluster numbers
   weight = ones (1, n);                 # cluster weights
   dgram = zeros (n-1, 3);               # clusters from n+1 to 2*n-1
   for cluster = n+1 : 2*n-1
     ## Find the two nearest clusters
-    [m midx] = min (d(:));
-    [r, c] = ind2sub (size (d), midx);
+    [m midx] = min (dmat(:));
+    [r, c] = ind2sub (size (dmat), midx);
     ## Here is the new cluster
-    dgram(cluster-n, :) = [cname(r) cname(c) d(r, c)];
+    dgram(cluster-n, :) = [cname(r) cname(c) dmat(r, c)];
     ## Put it in place of the first one and remove the second
     cname(r) = cluster;
     cname(c) = [];
@@ -160,19 +175,19 @@ function dgram = linkage (d, method = "single", distarg, savememory)
     ## (Octave-7+ needs switch stmt to avoid 'called with too many inputs' err.)
     switch find (mask)
       case {1, 2, 4}                    # 1 arg
-        newd = dist (d([r c], :));
+        newd = dist (dmat([r c], :));
       case {3, 5, 7}                    # 4 args
-        newd = dist (d([r c], :), r, c, weight);
+        newd = dist (dmat([r c], :), r, c, weight);
       case 6                            # 2 args
-        newd = dist (d([r c], :), r);
+        newd = dist (dmat([r c], :), r);
       otherwise
     endswitch
     newd(r) = Inf;                      # Take care of the diagonal element
     ## Put distances in place of the first ones, remove the second ones
-    d(r,:) = newd;
-    d(:,r) = newd';
-    d(c,:) = [];
-    d(:,c) = [];
+    dmat(r,:) = newd;
+    dmat(:,r) = newd';
+    dmat(c,:) = [];
+    dmat(:,c) = [];
     ## The new weight is the sum of the components' weights
     weight(r) += weight(c);
     weight(c) = [];

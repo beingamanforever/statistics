@@ -313,9 +313,8 @@ classdef RegressionGAM
 
       ## Generate default predictors and response variable names (if necessary)
       if (isempty (PredictorNames))
-        for i = 1:ndims_X
-          PredictorNames {i} = strcat ("x", num2str (i));
-        endfor
+        PredictorNames = arrayfun (@(i) sprintf ("x%d", i), 1:ndims_X, ...
+                                   "UniformOutput", false);
       endif
       if (isempty (ResponseName))
         ResponseName = "Y";
@@ -710,10 +709,16 @@ classdef RegressionGAM
       ## Initialize variables
       converged = false;
       iter      = 0;
-      RSS       = zeros (1, columns (X));
+      n_features = columns (X);
+      RSS       = zeros (1, n_features);
       res       = Y - Inter;
       ns        = rows (X);
       Tol       = this.Tol;
+
+      ## Preallocate param and RSSk arrays
+      param = repmat (struct (), 1, n_features);
+      RSSk  = zeros (1, n_features);
+
       ## Start training
       while (! (converged || iter > 1000))
         iter += 1;

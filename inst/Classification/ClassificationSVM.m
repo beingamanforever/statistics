@@ -818,10 +818,8 @@ classdef ClassificationSVM
 
       ## Generate default predictors and response variable names (if necessary)
       if (isempty (PredictorNames))
-        PredictorNames = cell (1, ndims_X);
-        for i = 1:ndims_X
-          PredictorNames{i} = strcat ("x", num2str (i));
-        endfor
+        PredictorNames = arrayfun (@(i) sprintf ("x%d", i), 1:ndims_X, ...
+                                   "UniformOutput", false);
       endif
       if (isempty (ResponseName))
         ResponseName = "Y";
@@ -1211,7 +1209,8 @@ classdef ClassificationSVM
 
       ## Set default values before parsing optional parameters
       LossFun = 'classiferror';
-      Weights = ones (size (X, 1), 1);
+      nobs = rows (X);
+      Weights = ones (nobs, 1);
 
       ## Parse extra parameters
       while (numel (varargin) > 0)
@@ -1239,7 +1238,7 @@ classdef ClassificationSVM
             endif
 
             ## Check if the size of weights matches the number of rows in X
-            if (numel (Weights) != size (X, 1))
+            if (numel (Weights) != nobs)
               error (strcat ("ClassificationSVM.loss: size of 'Weights'", ...
                              " must be equal to the number of rows in X."));
             endif
@@ -1346,7 +1345,8 @@ classdef ClassificationSVM
 
       ## Set default values before parsing optional parameters
       LossFun = 'classiferror';
-      Weights = ones (size (this.X, 1), 1);
+      nobs = rows (this.X);
+      Weights = ones (nobs, 1);
 
       ## Parse extra parameters
       while (numel (varargin) > 0)
@@ -1375,7 +1375,7 @@ classdef ClassificationSVM
             endif
 
             ## Check if the size of weights matches the number of rows in X
-            if (numel (Weights) != size (this.X, 1))
+            if (numel (Weights) != nobs)
               error (strcat ("ClassificationSVM.resubLoss: size", ...
                              " of 'Weights' must be equal to the", ...
                              " number of rows in X."));

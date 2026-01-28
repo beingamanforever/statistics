@@ -121,24 +121,59 @@ function [H, pValue, ks2stat] = kstest2 (x1, x2, varargin)
   elseif isempty (x2)
     error ("kstest2: Not enough data in X2");
   endif
-  ## Calculate F1(x) and F2(x)
+  ## Calculate F1(x) and F2(x) using two-pointer merge algorithm
   n1 = length (x1);
   n2 = length (x2);
-  binEdges    =  [-inf; sort([x1;x2]); inf];
-  binCounts1  =  histc (x1 , binEdges, 1);
-  binCounts2  =  histc (x2 , binEdges, 1);
-  sampleCDF1  =  cumsum (binCounts1)(1:end-1) / n1;
-  sampleCDF2  =  cumsum (binCounts2)(1:end-1) / n2;
-  ## Calculate the suitable KS statistic according to tail
-  switch tail
-    case "unequal"    # 2-sided test: T = max|F1(x) - F2(x)|.
-      deltaCDF  =  abs (sampleCDF1 - sampleCDF2);
-    case "smaller"    # 1-sided test: T = max[F2(x) - F1(x)].
-      deltaCDF  =  sampleCDF2 - sampleCDF1;
-    case "larger"     # 1-sided test: T = max[F1(x) - F2(x)].
-      deltaCDF  =  sampleCDF1 - sampleCDF2;
-  endswitch
-  ks2stat = max (deltaCDF);
+
+  ## Sort both samples
+  x1 = sort (x1);
+  x2 = sort (x2);
+
+  ## Merge and compute empirical CDFs at each unique point
+  i = 1;
+  j = 1;
+  ks2stat = 0;
+
+  while (i <= n1 || j <= n2)
+    ## Compute current CDFs
+    cdf1 = (i - 1) / n1;
+    cdf2 = (j - 1) / n2;
+
+    ## Determine which sample has the next smallest value
+    if (i > n1)
+      ## x1 exhausted, advance x2
+      cdf2 = j / n2;
+      j++;
+    elseif (j > n2)
+      ## x2 exhausted, advance x1
+      cdf1 = i / n1;
+      i++;
+    elseif (x1(i) < x2(j))
+      ## x1 has next point, step x1 CDF
+      cdf1 = i / n1;
+      i++;
+    elseif (x2(j) < x1(i))
+      ## x2 has next point, step x2 CDF
+      cdf2 = j / n2;
+      j++;
+    else
+      ## Tie: both have same value, advance both
+      cdf1 = i / n1;
+      cdf2 = j / n2;
+      i++;
+      j++;
+    endif
+
+    ## Update KS statistic based on tail type
+    switch tail
+      case "unequal"
+        ks2stat = max (ks2stat, abs (cdf1 - cdf2));
+      case "smaller"
+        ks2stat = max (ks2stat, cdf2 - cdf1);
+      case "larger"
+        ks2stat = max (ks2stat, cdf1 - cdf2);
+    endswitch
+  endwhile
   ## Compute the asymptotic P-value approximation
   n =  n1 * n2 / (n1 + n2);
   lambda = max ((sqrt (n) + 0.12 + 0.11 / sqrt (n)) * ks2stat, 0);

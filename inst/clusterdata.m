@@ -49,15 +49,19 @@ function T = clusterdata (X, varargin)
   criterion = "inconsistent";
   D = 2;
 
-  if (isnumeric (varargin{1}))              # clusterdata (X, cutoff)
-    if (isinteger (varargin{1}) && (varargin{1} >= 2))
+  if (isnumeric (varargin{1}) && isscalar (varargin{1}))  # clusterdata (X, cutoff)
+    C = varargin{1};
+    if (isscalar (C) && C >= 2 && fix (C) == C)
+      ## MATLAB semantics: scalar integer >= 2 is treated as MaxClust
       clustering_method = "MaxClust";
     else
       clustering_method = "Cutoff";
     endif
-    C = varargin{1};
 
-  else                                      # clusterdata (Name, Value)
+  elseif (! isnumeric (varargin{1}))        # clusterdata (Name, Value)
+    if (mod (numel (varargin), 2) != 0)
+      error ("clusterdata: name-value arguments must be pairs.");
+    endif
     pair_index = 1;
     while (pair_index < (nargin - 1))
       switch (lower (varargin{pair_index}))
@@ -116,3 +120,23 @@ endfunction
 %! clusterdata (1)
 %!error <unknown property .*> clusterdata ([1 1], "Bogus", 1)
 %!error <specify .* 'MaxClust' or 'Cutoff' .*> clusterdata ([1 1], "Depth", 1)
+%!test
+%! X = rand (10,2);
+%! T = clusterdata (X, 2);
+%! assert (numel (unique (T)), 2);
+%!test
+%! X = rand (10,2);
+%! try
+%!   clusterdata (X, "Cutoff", 1, "Depth");
+%!   error ("no error thrown");
+%! catch err
+%!   assert (! isempty (strfind (err.message, "name-value")));
+%! end_try_catch
+%!test
+%! X = rand (20,2);
+%! T = clusterdata (X, "Cutoff", 1.0);
+%! assert (rows (T), 20);
+%!test
+%! X = rand (15,3);
+%! T = clusterdata (X, "distance", "cityblock", "linkage", "average", "MaxClust", 3);
+%! assert (numel (unique (T)), 3);

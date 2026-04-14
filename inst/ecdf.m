@@ -129,7 +129,8 @@ function [Fout, x, Flo, Fup] = ecdf (y, varargin)
         case "alpha"
           alpha = prop{2};
           ## Check for valid alpha value
-          if (numel (alpha) != 1 || ! isnumeric (alpha) || alpha <= 0 || alpha >= 1)
+          if (numel (alpha) != 1 || ! isnumeric (alpha) || ! isfinite (alpha) || ...
+              alpha <= 0 || alpha >= 1)
             error ("ecdf: alpha must be a numeric scalar in the range (0,1).");
           endif
         case "function"
@@ -296,15 +297,15 @@ endfunction
 %!error ecdf ();
 %!error ecdf (randi (15,2));
 %!error ecdf ([3,2,4,3+2i,5]);
-%!error kstest ([2,3,4,5,6],"tail");
-%!error kstest ([2,3,4,5,6],"tail", "whatever");
-%!error kstest ([2,3,4,5,6],"function", "");
-%!error kstest ([2,3,4,5,6],"badoption", 0.51);
-%!error kstest ([2,3,4,5,6],"tail", 0);
-%!error kstest ([2,3,4,5,6],"alpha", 0);
-%!error kstest ([2,3,4,5,6],"alpha", NaN);
-%!error kstest ([NaN,NaN,NaN,NaN,NaN],"tail", "unequal");
-%!error kstest ([2,3,4,5,6],"alpha", 0.05, "CDF", [2,3,4;1,3,4;1,2,1]);
+%!error <unknown option> ecdf ([2,3,4,5,6], "badoption", 0.51);
+%!error <wrong function name> ecdf ([2,3,4,5,6], "function", "bogus");
+%!error <alpha must be> ecdf ([2,3,4,5,6], "alpha", 0);
+%!error <alpha must be> ecdf ([2,3,4,5,6], "alpha", NaN);
+%!error <wrong bounds> ecdf ([2,3,4,5,6], "bounds", "bogus");
+%!error <censoring data mismatch> ecdf ([2,3,4], "censoring", [0, 1]);
+%!error <frequency data mismatch> ecdf ([2,3,4], "frequency", [1, 1]);
+%!error <not enough data> ecdf ([NaN, NaN, NaN]);
+%!error <optional parameters must be in name/value pairs> ecdf ([1,2,3], "alpha");
 
 ## Test output against MATLAB results
 %!test

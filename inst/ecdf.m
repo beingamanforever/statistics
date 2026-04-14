@@ -85,7 +85,7 @@ function [Fout, x, Flo, Fup] = ecdf (y, varargin)
       isstruct (get (y));
       ax = y;
       y = varargin{1};
-      varargin{1} = [];
+      varargin(1) = [];
     catch
       ##error ("ecdf: invalid handle %f.", ax);
       ax = [];
@@ -305,6 +305,15 @@ endfunction
 %!error kstest ([2,3,4,5,6],"alpha", NaN);
 %!error kstest ([NaN,NaN,NaN,NaN,NaN],"tail", "unequal");
 %!error kstest ([2,3,4,5,6],"alpha", 0.05, "CDF", [2,3,4;1,3,4;1,2,1]);
+
+%!test
+%! hf = figure ("visible", "off");
+%! unwind_protect
+%!   ax = axes ("parent", hf);
+%!   ecdf (ax, [2,3,4,5,6], "alpha", 0.05);
+%! unwind_protect_cleanup
+%!   close (hf);
+%! end_unwind_protect
 
 ## Test output against MATLAB results
 %!test

@@ -186,7 +186,7 @@ function [p, h, stats] = signrank (x, my, varargin)
   if (n == 0)
     p = 1;
     h = 0;
-    stats.sign = 0;
+    stats.signedrank = 0;
     stats.zval = NaN;
     return;
   endif
@@ -321,6 +321,12 @@ endfunction
 %! p_clean = signrank ([1, 2, 3, 4, 5]);
 %! p_nan   = signrank (x);
 %! assert (p_nan, p_clean);
+%!test
+%! [p, h, stats] = signrank ([1, 2, 3], [1, 2, 3]);
+%! assert (p, 1);
+%! assert (h, false);
+%! assert (stats.signedrank, 0);
+%! assert (stats.zval, NaN);
 
 ## Test input validation
 %!error <signrank: X must be a vector.> signrank (ones (2))

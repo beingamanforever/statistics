@@ -382,8 +382,6 @@ classdef GapEvaluation < ClusterCriterion
                   error (strcat ("GapEvaluation: invalid return value", ...
                                  " from custom clustering function"));
                 endif
-                this.ClusteringSolutions(:, iter) = ...
-                  this.ClusteringFunction(UsableX, this.InspectedK(iter));
               else
                 switch (this.ClusteringFunction)
                   case "kmeans"

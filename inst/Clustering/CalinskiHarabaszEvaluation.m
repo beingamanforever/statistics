@@ -204,24 +204,24 @@ classdef CalinskiHarabaszEvaluation < ClusterCriterion
           ## reference: calinhara function from the fpc package of R,
           ##            by Christian Hennig
           ##            https://CRAN.R-project.org/package=fpc
-          W = zeros (columns (UsableX)); # between clusters covariance
-          for i = 1 : this.InspectedK(iter)
-            vIndicesI = find (this.ClusteringSolutions(:, iter) == i);
-            ni = length (vIndicesI); # size of cluster i
-            if (ni == 1)
-              ## if the cluster has just one member the covariance is zero
+          S = (this.NumObservations - 1) * cov (UsableX);
+          clust_idx = this.ClusteringSolutions(:, iter);
+          k = this.InspectedK(iter);
+          grand_mean = mean (UsableX, 1);
+          B_mat = zeros (columns (UsableX));
+          for i = 1 : k
+            members = (clust_idx == i);
+            ni = sum (members);
+            if (ni == 0)
               continue;
             endif
-            ## weighted update of the covariance matrix
-            W += cov (UsableX(vIndicesI, :)) * (ni - 1);
+            diff_i = mean (UsableX(members, :), 1) - grand_mean;
+            B_mat += ni * (diff_i' * diff_i);
           endfor
-          S = (this.NumObservations - 1) * cov (UsableX); # within clusters cov.
-          B = S - W; # between clusters means
 
           ## tr(B) / tr(W) * (N-k) / (k-1)
-          this.CriterionValues(iter) = (this.NumObservations - ...
-            this.InspectedK(iter)) * trace (B) / ...
-            ((this.InspectedK(iter) - 1) * trace (W));
+          this.CriterionValues(iter) = (this.NumObservations - k) * ...
+            trace (B_mat) / ((k - 1) * trace (S - B_mat));
         endif
       endfor
 

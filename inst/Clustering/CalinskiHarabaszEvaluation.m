@@ -208,16 +208,16 @@ classdef CalinskiHarabaszEvaluation < ClusterCriterion
           clust_idx = this.ClusteringSolutions(:, iter);
           k = this.InspectedK(iter);
           grand_mean = mean (UsableX, 1);
-          B_mat = zeros (columns (UsableX));
-          for i = 1 : k
-            members = (clust_idx == i);
-            ni = sum (members);
-            if (ni == 0)
-              continue;
-            endif
-            diff_i = mean (UsableX(members, :), 1) - grand_mean;
-            B_mat += ni * (diff_i' * diff_i);
-          endfor
+          G = sparse (1:this.NumObservations, clust_idx, 1, ...
+                      this.NumObservations, k);
+          ni = full (sum (G, 1))';
+          sum_by_cluster = full (G' * UsableX);
+          mean_by_cluster = zeros (k, columns (UsableX));
+          has_members = (ni > 0);
+          mean_by_cluster(has_members, :) = ...
+            sum_by_cluster(has_members, :) ./ ni(has_members);
+          diff = mean_by_cluster - grand_mean;
+          B_mat = diff' * (diff .* ni);
 
           ## tr(B) / tr(W) * (N-k) / (k-1)
           this.CriterionValues(iter) = (this.NumObservations - k) * ...

@@ -98,13 +98,13 @@ function [h, p, ci] = binotest(pos,n,p0,varargin)
       endif
       ci = [p_low,p_high];
     case 'left'
-      p = 1-binocdf(pos-1,n,p0);
+      p = binocdf(pos,n,p0);
       if pos==n p_high = 1;
          else   p_high = fzero(@(ph)  binocdf(pos,n,ph)  -alpha,[0,1]);
       endif
       ci = [0, p_high];
     case 'right'
-      p = binocdf(pos,n,p0);
+      p = 1-binocdf(pos-1,n,p0);
       if pos==0 p_low = 0;
 	 else   p_low = fzero(@(pl)1-binocdf(pos-1,n,pl)-alpha,[0 1]);
       endif
@@ -137,5 +137,5 @@ end
 %!test #example from https://en.wikipedia.org/wiki/Binomial_test
 %! [h,p_val,ci] = binotest (51,235,1/6);
 %! assert (p_val, 0.0437, 0.00005)
-%! [h,p_val,ci] = binotest (51,235,1/6,'tail','left');
+%! [h,p_val,ci] = binotest (51,235,1/6,'tail','right');
 %! assert (p_val, 0.027, 0.0005)

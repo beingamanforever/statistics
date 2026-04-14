@@ -99,12 +99,8 @@ function T = cluster (Z, opt, varargin)
   ## vector of values used by the threshold check
   vThresholds = [];
 
-  ## starting number of clusters
-  nClusters = 1;
-
   ## the return value is the matrix T, constituted by one or more vector vT
   T = [];
-  vT = zeros (1, n);
 
   ## main logic
   ## a few checks and computations before launching the recursive function
@@ -137,6 +133,8 @@ function T = cluster (Z, opt, varargin)
   endswitch
 
   for c_index = 1:length (C)
+    nClusters = 1;
+    vT = zeros (1, n);
     cluster_cutoff_recursive (rows (Z), nClusters, c_index);
     T = [T; vT];
   endfor
@@ -189,4 +187,10 @@ endfunction
 % Z = linkage(X, "ward");
 % T = [ones (10, 1); 2 * ones (10, 1)];
 % assert (cluster (Z, "MaxClust", 2), T);
+
+%!test
+%! Z = [1 2 0.5; 3 4 1.0; 5 6 1.5; 7 8 2.0];
+%! T = cluster (Z, "MaxClust", [2, 3]);
+%! assert (max (T(:,1)), 2);
+%! assert (max (T(:,2)), 3);
 
